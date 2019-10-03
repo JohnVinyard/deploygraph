@@ -14,6 +14,12 @@ from io import StringIO
 IngressRule = namedtuple('IngressRule', ['protocol', 'port', 'source'])
 
 
+class NamedStringIO(StringIO):
+    def __init__(self, name, contents=''):
+        super().__init__(contents)
+        self.name = name
+
+
 class BaseSecurityGroup(Requirement):
     def __init__(self, group_name, description, vpc_id, *rules):
 
@@ -444,7 +450,7 @@ class SupervisordHelper(object):
             with open(self.local_conf_path, 'r') as f:
                 content = f.read()
                 with_variables = content.format(**variables)
-                sio = StringIO(with_variables)
+                sio = NamedStringIO(self.config_filename, with_variables)
                 connection.put(sio, self.remote_path)
         else:
             connection.copy_glob(self.local_conf_path, self.remote_path)
