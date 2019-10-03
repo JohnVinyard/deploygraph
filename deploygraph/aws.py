@@ -220,7 +220,10 @@ class Connection(fabric.Connection):
     def sudo_put(self, local_path, remote_path):
         tmp = '/tmp'
         self.put(local_path, tmp)
-        path, filename = os.path.split(local_path)
+        try:
+            _, filename = os.path.split(local_path)
+        except TypeError:
+            filename = local_path.name
         temp_path = os.path.join(tmp, filename)
         self.sudo(f'sudo mv {temp_path} {remote_path}')
 
@@ -661,8 +664,9 @@ class SupervisordHelper(object):
 
 
 class DNS(Requirement):
-    def __init__(self, app, domain_name):
+    def __init__(self, app, domain_name, add_www=True):
         super(DNS, self).__init__(app)
+        self.add_www = add_www
         self.domain_name = domain_name
         self.app = app
         self.client = boto3.client('route53')
@@ -672,8 +676,7 @@ class DNS(Requirement):
 
     def fulfilled(self):
         try:
-            requests.get(
-                'http://{domain}'.format(domain=self.domain_name), timeout=10)
+            requests.get(f'http://{self.domain_name}', timeout=10)
             return True
         except (Timeout, ConnectionError):
             return False
@@ -705,15 +708,17 @@ class DNS(Requirement):
         zones = filter(lambda z: z['Name'] == 'cochlea.xyz.', zones)
 
         for zone in zones:
+            changes = [self._change_template(self.domain_name, ip)]
+            if self.add_www:
+                changes.append(
+                    self._change_template(f'www.{self.domain_name}', ip))
+
             zone_path = zone['Id']
             self.client.change_resource_record_sets(
                 HostedZoneId=zone_path,
                 ChangeBatch={
                     "Comment": "Automatic DNS update",
-                    "Changes": [
-                        self._change_template(self.domain_name, ip),
-                        self._change_template(f'www.{self.domain_name}', ip),
-                    ]
+                    "Changes": changes
                 }
             )
 
