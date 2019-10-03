@@ -38,7 +38,7 @@ class BaseSecurityGroup(Requirement):
         groups = results['SecurityGroups']
         return groups[0]
 
-    def __nonzero__(self):
+    def fulfilled(self):
         try:
             self._get_group()
             return True
@@ -123,7 +123,7 @@ class S3Bucket(Requirement):
                 hostname=self.hostname, bucket=self.bucket_name)
         }
 
-    def __nonzero__(self):
+    def fulfilled(self):
         try:
             self.client.head_bucket(Bucket=self.bucket_name)
             return True
@@ -145,7 +145,7 @@ class CorsConfig(Requirement):
         self.bucket = bucket
         self.client = boto3.client('s3')
 
-    def __nonzero__(self):
+    def fulfilled(self):
         try:
             self.client.get_bucket_cors(Bucket=self.bucket.name)
             return True
@@ -185,7 +185,7 @@ class ServiceLinkedRole(Requirement):
         role = filter(lambda role: role['Path'] == self.expected_path, roles)[0]
         return role
 
-    def __nonzero__(self):
+    def fulfilled(self):
         try:
             self._get_data()
             return True
@@ -254,7 +254,7 @@ class Box(Requirement):
         ])
         return instances['Reservations'][0]['Instances'][0]
 
-    def __nonzero__(self):
+    def fulfilled(self):
         try:
             self._get_instance()
             return True
@@ -466,7 +466,7 @@ class SupervisordHelper(object):
 #         super(FeatureExtractorApp, self).__init__(server)
 #         self.server = server
 #
-#     def __nonzero__(self):
+#     def fulfilled(self):
 #         raise AlwaysUpdateException()
 #
 #     def data(self):
@@ -495,7 +495,7 @@ class SupervisordHelper(object):
 #         super(SimilarityIndexApp, self).__init__(server)
 #         self.server = server
 #
-#     def __nonzero__(self):
+#     def fulfilled(self):
 #         raise AlwaysUpdateException()
 #
 #     def data(self):
@@ -528,7 +528,7 @@ class SupervisordHelper(object):
 #             'deploy/app',
 #             'remote/')
 #
-#     def __nonzero__(self):
+#     def fulfilled(self):
 #         """
 #         Check that the about page returns a 200
 #         """
@@ -629,7 +629,7 @@ class SupervisordHelper(object):
 #     def supervisord(self):
 #         return self.server.supervisord
 #
-#     def __nonzero__(self):
+#     def fulfilled(self):
 #         raise AlwaysUpdateException()
 #
 #     def fulfill(self):
@@ -652,7 +652,7 @@ class DNS(Requirement):
     def connection(self):
         return self.app.connection()
 
-    def __nonzero__(self):
+    def fulfilled(self):
         try:
             requests.get(
                 'http://{domain}'.format(domain=self.domain_name), timeout=10)
@@ -667,14 +667,14 @@ class DNS(Requirement):
 
     def _change_template(self, domain_name, ip):
         return {
-            "Action": "UPSERT",
-            "ResourceRecordSet": {
-                "Name": domain_name,
-                "Type": "A",
-                "TTL": 300,
-                "ResourceRecords": [
+            'Action': 'UPSERT',
+            'ResourceRecordSet': {
+                'Name': domain_name,
+                'Type': 'A',
+                'TTL': 300,
+                'ResourceRecords': [
                     {
-                        "Value": ip
+                        'Value': ip
                     },
                 ],
             }
@@ -687,14 +687,14 @@ class DNS(Requirement):
         zones = filter(lambda z: z['Name'] == 'cochlea.xyz.', zones)
 
         for zone in zones:
+            zone_path = zone['Id']
             self.client.change_resource_record_sets(
-                HostedZoneId=zone['Id'],
+                HostedZoneId=zone_path,
                 ChangeBatch={
                     "Comment": "Automatic DNS update",
                     "Changes": [
                         self._change_template(self.domain_name, ip),
-                        self._change_template(
-                            'www.{domain}'.format(domain=self.domain_name), ip),
+                        self._change_template(f'www.{self.domain_name}', ip),
                     ]
                 }
             )
@@ -706,7 +706,7 @@ class TLS(Requirement):
         self.dns = dns
         self.email_address = email_address
 
-    def __nonzero__(self):
+    def fulfilled(self):
         domain = self.dns.data()['domain']
         try:
             resp = requests.get('https://{domain}/about'.format(**locals()))
