@@ -284,7 +284,7 @@ class Box(Requirement):
     def fulfill(self):
         try:
             key_pair = self.client.create_key_pair(KeyName=self.instance_name)
-            with open(self.pem_path, 'wb') as f:
+            with open(self.pem_path, 'w') as f:
                 f.write(key_pair['KeyMaterial'])
         except ClientError:
             # the key has already been created
@@ -395,7 +395,7 @@ class AnacondaServer(BaseServer):
         connection.run('rm Miniconda-latest-Linux-x86_64.sh', warn=True)
 
         connection.run(
-            'conda/bin/conda create -y -n {env} python=2.7'.format(
+            'conda/bin/conda create -y -n {env} python=3.6'.format(
                 env=self.conda_env), warn=True)
 
         self.conda_install(
