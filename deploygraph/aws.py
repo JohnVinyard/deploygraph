@@ -387,12 +387,14 @@ class AnacondaServer(BaseServer):
             'export PATH=/home/ubuntu/conda/bin:$PATH',
             '/etc/profile.d/conda.sh')
 
+        miniconda_filename = 'Miniconda3-latest-Linux-x86_64.sh'
+
         connection.run(
-            'wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh')
+            f'wget https://repo.anaconda.com/miniconda/{miniconda_filename}')
         connection.run(
-            '/bin/bash Miniconda-latest-Linux-x86_64.sh -b -p /home/ubuntu/conda',
+            f'/bin/bash {miniconda_filename} -b -p /home/ubuntu/conda',
             warn=True)
-        connection.run('rm Miniconda-latest-Linux-x86_64.sh', warn=True)
+        connection.run(f'rm {miniconda_filename}', warn=True)
 
         connection.run(
             'conda/bin/conda create -y -n {env} python=3.7'.format(
