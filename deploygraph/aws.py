@@ -395,7 +395,7 @@ class AnacondaServer(BaseServer):
         connection.run('rm Miniconda-latest-Linux-x86_64.sh', warn=True)
 
         connection.run(
-            'conda/bin/conda create -y -n {env} python=3.6'.format(
+            'conda/bin/conda create -y -n {env} python=3.7'.format(
                 env=self.conda_env), warn=True)
 
         self.conda_install(
