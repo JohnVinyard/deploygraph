@@ -9,6 +9,7 @@ import glob
 import fnmatch
 from requests.exceptions import Timeout, ConnectionError, SSLError
 from http import client
+from io import StringIO
 
 IngressRule = namedtuple('IngressRule', ['protocol', 'port', 'source'])
 
@@ -424,6 +425,10 @@ class SupervisordHelper(object):
     def conf_path(self):
         return os.path.join(self.remote_path, self.config_filename)
 
+    @property
+    def local_conf_path(self):
+        return os.path.join(self.local_path, self.config_filename)
+
     def check_running(self, connection):
         """
         Succeed silently, or raise if not running
@@ -432,16 +437,21 @@ class SupervisordHelper(object):
             'supervisorctl -c {path} pid {app_name}'
                 .format(path=self.conf_path, app_name=self.app_name))
 
-    def copy_config(self, connection):
-        connection.copy_glob(
-            os.path.join(self.local_path, self.config_filename),
-            self.remote_path)
+    def copy_config(self, connection, variables=None):
+        if variables:
+            with open(self.local_conf_path, 'r') as f:
+                content = f.read()
+                with_variables = content.format(**variables)
+                sio = StringIO(with_variables)
+                connection.put(sio, self.remote_path)
+        else:
+            connection.copy_glob(self.local_conf_path, self.remote_path)
 
     def make_remote_log_directory(self, connection):
         connection.run('mkdir -p {path}'.format(path=self.remote_log_path))
 
-    def prepare(self, connection):
-        self.copy_config(connection)
+    def prepare(self, connection, variables=None):
+        self.copy_config(connection, variables=variables)
         self.make_remote_log_directory(connection)
 
     def start(self, connection):
