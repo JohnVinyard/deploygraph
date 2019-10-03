@@ -723,16 +723,18 @@ class DNS(Requirement):
             )
 
 
+# TODO: Make www domain optional
 class TLS(Requirement):
-    def __init__(self, dns, email_address):
+    def __init__(self, dns, email_address, add_www=True):
         super(TLS, self).__init__(dns)
+        self.add_www = add_www
         self.dns = dns
         self.email_address = email_address
 
     def fulfilled(self):
         domain = self.dns.data()['domain']
         try:
-            resp = requests.get('https://{domain}/about'.format(**locals()))
+            resp = requests.get('https://{domain}'.format(**locals()))
             return resp.status_code == client.OK
         except (ConnectionError, Timeout, SSLError) as e:
             print('TLS FAILED', e)
@@ -748,17 +750,21 @@ class TLS(Requirement):
         connection.sudo('apt-get update -y')
         connection.sudo('apt-get install python-certbot-nginx -y')
         domain = data['domain']
-        www_domain = 'www.{domain}'.format(**locals())
+
         email = self.email_address
-        connection.sudo(
-            'certbot \
+        cmd = f'certbot \
                 --nginx \
                 -d {domain} \
-                -d {www_domain} \
                 -n \
                 --redirect \
                 --agree-tos \
-                -m {email}'.format(**locals()))
+                -m {email}'
+
+        if self.add_www:
+            www_domain = 'www.{domain}'.format(**locals())
+            cmd += f' -d {www_domain}'
+
+        connection.sudo(cmd)
 
 
 class Deployment(object):
